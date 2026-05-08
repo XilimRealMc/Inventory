@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -104,6 +105,11 @@ input[type="number"]{
     font-weight:bold;
 }
 
+.loading{
+    opacity:0.6;
+    pointer-events:none;
+}
+
 </style>
 </head>
 
@@ -115,11 +121,17 @@ input[type="number"]{
 
     <div class="sticky-tools">
 
-        <button class="btn-depo" onclick="submitBatch('deposit')">
+        <button
+            class="btn-depo"
+            onclick="submitBatch('deposit')"
+        >
             DEPOSIT SEMUA
         </button>
 
-        <button class="btn-with" onclick="submitBatch('withdraw')">
+        <button
+            class="btn-with"
+            onclick="submitBatch('withdraw')"
+        >
             WITHDRAW SEMUA
         </button>
 
@@ -148,43 +160,60 @@ input[type="number"]{
 
 <script>
 
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzE7MI5KLTP0gHNVVYmhmjKBPJNdCkQs1F96P1tcsEiTp1_Rz_njm0rQ1NHE_EKH1nMFw/exec";
+// ========================================
+// URL APPS SCRIPT
+// ========================================
+
+const SCRIPT_URL =
+"https://script.google.com/macros/s/AKfycbzE7MI5KLTP0gHNVVYmhmjKBPJNdCkQs1F96P1tcsEiTp1_Rz_njm0rQ1NHE_EKH1nMFw/exec";
 
 let itemCodes = [];
 
-// ======================
-// STATUS UI
-// ======================
+// ========================================
+// STATUS
+// ========================================
 
 function setStatus(text,color){
 
-    const status = document.getElementById("status");
+    const status =
+        document.getElementById("status");
 
     status.innerText = text;
     status.style.color = color;
 }
 
-// ======================
+// ========================================
 // LOAD DATA
-// ======================
+// ========================================
 
 async function loadData(){
 
     try{
 
-        setStatus("⏳ Memuat data...","orange");
+        setStatus(
+            "⏳ Memuat database...",
+            "orange"
+        );
 
-        const response = await fetch(SCRIPT_URL);
+        const response =
+            await fetch(SCRIPT_URL);
 
-        const data = await response.json();
+        const text =
+            await response.text();
 
-        const tableBody = document.getElementById("tableBody");
+        console.log(text);
+
+        const data =
+            JSON.parse(text);
+
+        const tableBody =
+            document.getElementById("tableBody");
 
         tableBody.innerHTML = "";
 
         itemCodes = [];
 
-        for(let i=1;i<data.length;i++){
+        for(let i = 1; i < data.length; i++){
 
             const kode = data[i][1];
 
@@ -194,13 +223,21 @@ async function loadData(){
 
                 tableBody.innerHTML += `
                 <tr>
-                    <td>${data[i][3]}</td>
-                    <td>${kode}</td>
+
+                    <td>
+                        ${data[i][3]}
+                    </td>
+
+                    <td>
+                        ${kode}
+                    </td>
+
                     <td>
                         <b style="font-size:18px;">
                             ${data[i][4]}
                         </b>
                     </td>
+
                     <td>
                         <input
                             type="number"
@@ -209,36 +246,54 @@ async function loadData(){
                             min="0"
                         >
                     </td>
+
                 </tr>
                 `;
             }
         }
 
-        setStatus("✅ Database siap","green");
+        setStatus(
+            "✅ Database siap",
+            "green"
+        );
 
     }catch(err){
 
         console.error(err);
 
-        setStatus("❌ Gagal load database","red");
+        setStatus(
+            "❌ Gagal load database",
+            "red"
+        );
+
+        alert(
+            "Gagal mengambil data database"
+        );
     }
 }
 
-// ======================
+// ========================================
 // SUBMIT TRANSAKSI
-// ======================
+// ========================================
 
 async function submitBatch(aksi){
 
     const itemsToProcess = [];
 
-    itemCodes.forEach(kode=>{
+    itemCodes.forEach(kode => {
 
-        const input = document.getElementById(`input-${kode}`);
+        const input =
+            document.getElementById(
+                `input-${kode}`
+            );
 
-        const jumlah = parseInt(input.value);
+        const jumlah =
+            parseInt(input.value);
 
-        if(!isNaN(jumlah) && jumlah > 0){
+        if(
+            !isNaN(jumlah) &&
+            jumlah > 0
+        ){
 
             itemsToProcess.push({
                 kode:kode,
@@ -247,78 +302,145 @@ async function submitBatch(aksi){
         }
     });
 
+    // =========================
+    // VALIDASI
+    // =========================
+
     if(itemsToProcess.length === 0){
 
-        alert("Isi minimal 1 barang.");
+        alert(
+            "Isi minimal 1 barang"
+        );
 
         return;
     }
 
-    setStatus(`⏳ Memproses ${aksi}...`,"orange");
+    // =========================
+    // UI LOADING
+    // =========================
+
+    document.body.classList.add(
+        "loading"
+    );
+
+    setStatus(
+        `⏳ Memproses ${aksi}...`,
+        "orange"
+    );
 
     try{
 
-        const response = await fetch(SCRIPT_URL,{
+        // =========================
+        // FETCH POST
+        // =========================
+
+        const response =
+            await fetch(SCRIPT_URL,{
 
             method:"POST",
 
+            redirect:"follow",
+
             headers:{
-                "Content-Type":"application/json"
+                "Content-Type":
+                "text/plain;charset=utf-8"
             },
 
             body:JSON.stringify({
+
                 aksi:aksi,
+
                 items:itemsToProcess
             })
         });
 
-        const result = await response.json();
+        const text =
+            await response.text();
 
-        console.log(result);
+        console.log(text);
+
+        const result =
+            JSON.parse(text);
+
+        // =========================
+        // SUCCESS
+        // =========================
 
         if(result.status){
 
-            let pesan = `✅ ${aksi.toUpperCase()} BERHASIL\n\n`;
+            let pesan =
+                `✅ ${aksi.toUpperCase()} BERHASIL\n\n`;
 
-            result.logs.forEach(log=>{
+            result.logs.forEach(log => {
+
                 pesan += log + "\n";
             });
 
             alert(pesan);
 
             // reset input
-            itemCodes.forEach(kode=>{
+            itemCodes.forEach(kode => {
 
-                const el = document.getElementById(`input-${kode}`);
+                const el =
+                    document.getElementById(
+                        `input-${kode}`
+                    );
 
-                if(el) el.value = "";
+                if(el){
+
+                    el.value = "";
+                }
             });
 
-            setStatus("✅ Transaksi berhasil","green");
+            setStatus(
+                "✅ Transaksi berhasil",
+                "green"
+            );
 
             // reload data
-            loadData();
+            await loadData();
 
         }else{
 
-            alert("❌ " + (result.message || result.error));
+            alert(
+                "❌ " +
+                (
+                    result.message ||
+                    result.error
+                )
+            );
 
-            setStatus("❌ Transaksi gagal","red");
+            setStatus(
+                "❌ Transaksi gagal",
+                "red"
+            );
         }
 
     }catch(err){
 
         console.error(err);
 
-        alert("❌ Tidak bisa terhubung ke server");
+        alert(
+            "❌ Tidak bisa terhubung ke server\n\n" +
+            err.message
+        );
 
-        setStatus("❌ Koneksi gagal","red");
+        setStatus(
+            "❌ Koneksi gagal",
+            "red"
+        );
+
+    }finally{
+
+        document.body.classList.remove(
+            "loading"
+        );
     }
 }
 
-// ======================
+// ========================================
 // START
-// ======================
+// ========================================
 
 loadData();
 
