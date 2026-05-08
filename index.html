@@ -168,8 +168,7 @@ button{
 // URL APPS SCRIPT
 // ======================================
 
-const SCRIPT_URL =
-"https://script.google.com/macros/s/AKfycbxFyJhW7WPxdpl9UMcGGEMMvL5qaDwWxFcb6EhzAfgOs4qt7v_EEo63zrv6BrOXiVGKBQ/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxFyJhW7WPxdpl9UMcGGEMMvL5qaDwWxFcb6EhzAfgOs4qt7v_EEo63zrv6BrOXiVGKBQ/exec";
 
 let itemCodes = [];
 
@@ -181,26 +180,17 @@ async function loadData(){
 
     try{
 
-        const response =
-            await fetch(SCRIPT_URL);
-
-        const data =
-            await response.json();
-
-        const tbody =
-            document.getElementById(
-                "inventory-body"
-            );
+        const response = await fetch(SCRIPT_URL);
+        const data = await response.json();
+        const tbody = document.getElementById("inventory-body");
 
         tbody.innerHTML = "";
-
         itemCodes = [];
 
         // skip header
         for(let i = 1; i < data.length; i++){
 
             const row = data[i];
-
             const kode = row[1];
             const kategori = row[2];
             const nama = row[3];
@@ -209,54 +199,34 @@ async function loadData(){
             itemCodes.push(kode);
 
             tbody.innerHTML += `
-
             <tr>
-
                 <td>${kode}</td>
-
-                <td class="category">
-                    ${kategori}
-                </td>
-
+                <td class="category">${kategori}</td>
                 <td>${nama}</td>
-
+                <td><b>${stok}</b></td>
                 <td>
-                    <b>${stok}</b>
-                </td>
-
-                <td>
-
                     <input
                         type="number"
                         min="0"
                         value="0"
                         id="jumlah-${kode}"
                     >
-
                 </td>
-
             </tr>
             `;
         }
 
-        setStatus(
-            "✅ Database berhasil dimuat",
-            "#2ecc71"
-        );
+        setStatus("✅ Database berhasil dimuat", "#2ecc71");
 
     }catch(err){
 
         console.error(err);
-
-        setStatus(
-            "❌ Gagal mengambil data",
-            "#e74c3c"
-        );
+        setStatus("❌ Gagal mengambil data", "#e74c3c");
     }
 }
 
 // ======================================
-// TRANSAKSI MASSAL
+// TRANSAKSI MASSAL (BATCH)
 // ======================================
 
 async function submitBatch(aksi){
@@ -265,81 +235,41 @@ async function submitBatch(aksi){
 
     itemCodes.forEach(kode => {
 
-        const jumlah =
-            parseInt(
-                document.getElementById(
-                    `jumlah-${kode}`
-                ).value
-            );
+        const jumlah = parseInt(document.getElementById(`jumlah-${kode}`).value);
 
-        if(
-            !isNaN(jumlah) &&
-            jumlah > 0
-        ){
-
+        if(!isNaN(jumlah) && jumlah > 0){
             items.push({
-
-                kode:kode,
-
-                jumlah:jumlah
+                aksi: aksi,
+                kode: kode,
+                jumlah: jumlah
             });
         }
     });
 
     if(items.length === 0){
-
-        alert(
-            "Isi minimal 1 item"
-        );
-
+        alert("Isi minimal 1 item");
         return;
     }
 
-    setStatus(
-        "⏳ Memproses transaksi...",
-        "#f1c40f"
-    );
+    setStatus("⏳ Memproses transaksi...", "#f1c40f");
 
     try{
 
-        // kirim satu-satu
-        for(const item of items){
+        // Mengirim seluruh data sebagai satu array payload
+        await fetch(SCRIPT_URL,{
+            method:"POST",
+            headers:{
+                "Content-Type":"text/plain;charset=utf-8"
+            },
+            body:JSON.stringify(items)
+        });
 
-            await fetch(SCRIPT_URL,{
-
-                method:"POST",
-
-                headers:{
-                    "Content-Type":
-                    "text/plain;charset=utf-8"
-                },
-
-                body:JSON.stringify({
-
-                    aksi:aksi,
-
-                    kode:item.kode,
-
-                    jumlah:item.jumlah
-                })
-            });
-        }
-
-        setStatus(
-            `✅ ${aksi.toUpperCase()} berhasil`,
-            "#2ecc71"
-        );
-
-        alert(
-            `${aksi.toUpperCase()} berhasil`
-        );
+        setStatus(`✅ ${aksi.toUpperCase()} berhasil`, "#2ecc71");
+        alert(`${aksi.toUpperCase()} berhasil`);
 
         // reset input
         itemCodes.forEach(kode => {
-
-            document.getElementById(
-                `jumlah-${kode}`
-            ).value = 0;
+            document.getElementById(`jumlah-${kode}`).value = 0;
         });
 
         // reload data
@@ -348,15 +278,8 @@ async function submitBatch(aksi){
     }catch(err){
 
         console.error(err);
-
-        setStatus(
-            "❌ Gagal transaksi",
-            "#e74c3c"
-        );
-
-        alert(
-            "Gagal mengirim transaksi"
-        );
+        setStatus("❌ Gagal transaksi", "#e74c3c");
+        alert("Gagal mengirim transaksi");
     }
 }
 
@@ -366,11 +289,7 @@ async function submitBatch(aksi){
 
 function setStatus(text,color){
 
-    const status =
-        document.getElementById(
-            "status"
-        );
-
+    const status = document.getElementById("status");
     status.innerText = text;
     status.style.color = color;
 }
