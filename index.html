@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="id">
-
 <head>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
@@ -12,7 +12,7 @@
 body{
     font-family:sans-serif;
     padding:20px;
-    background:#2c3e50;
+    background-color:#2c3e50;
     background-image:url('rex.png');
     background-size:cover;
     background-position:center;
@@ -36,7 +36,6 @@ h2{
 .sticky-tools{
     position:sticky;
     top:0;
-    z-index:100;
 
     display:flex;
     justify-content:center;
@@ -47,7 +46,10 @@ h2{
     padding:15px;
     border-radius:10px;
     margin-bottom:20px;
+
     border:2px solid #ccc;
+
+    z-index:100;
 }
 
 button{
@@ -105,12 +107,8 @@ input[type="number"]{
     font-weight:bold;
 }
 
-.loading{
-    opacity:0.6;
-    pointer-events:none;
-}
-
 </style>
+
 </head>
 
 <body>
@@ -136,7 +134,7 @@ input[type="number"]{
         </button>
 
         <div id="status">
-            Memuat database...
+            Memuat data...
         </div>
 
     </div>
@@ -147,8 +145,8 @@ input[type="number"]{
             <tr>
                 <th>Nama Barang</th>
                 <th>Kode</th>
-                <th>Stok</th>
-                <th>Input</th>
+                <th>Stok Saat Ini</th>
+                <th>Jumlah Input</th>
             </tr>
         </thead>
 
@@ -160,27 +158,10 @@ input[type="number"]{
 
 <script>
 
-// ========================================
-// URL APPS SCRIPT
-// ========================================
-
 const SCRIPT_URL =
 "https://script.google.com/macros/s/AKfycbzE7MI5KLTP0gHNVVYmhmjKBPJNdCkQs1F96P1tcsEiTp1_Rz_njm0rQ1NHE_EKH1nMFw/exec";
 
 let itemCodes = [];
-
-// ========================================
-// STATUS
-// ========================================
-
-function setStatus(text,color){
-
-    const status =
-        document.getElementById("status");
-
-    status.innerText = text;
-    status.style.color = color;
-}
 
 // ========================================
 // LOAD DATA
@@ -190,26 +171,18 @@ async function loadData(){
 
     try{
 
-        setStatus(
-            "⏳ Memuat database...",
-            "orange"
-        );
-
         const response =
             await fetch(SCRIPT_URL);
 
-        const text =
-            await response.text();
-
-        console.log(text);
-
         const data =
-            JSON.parse(text);
+            await response.json();
 
         const tableBody =
-            document.getElementById("tableBody");
+            document.getElementById(
+                'tableBody'
+            );
 
-        tableBody.innerHTML = "";
+        tableBody.innerHTML = '';
 
         itemCodes = [];
 
@@ -221,7 +194,7 @@ async function loadData(){
 
                 itemCodes.push(kode);
 
-                tableBody.innerHTML += `
+                const row = `
                 <tr>
 
                     <td>
@@ -232,10 +205,8 @@ async function loadData(){
                         ${kode}
                     </td>
 
-                    <td>
-                        <b style="font-size:18px;">
-                            ${data[i][4]}
-                        </b>
+                    <td style="font-size:18px;">
+                        <b>${data[i][4]}</b>
                     </td>
 
                     <td>
@@ -249,26 +220,31 @@ async function loadData(){
 
                 </tr>
                 `;
+
+                tableBody.innerHTML += row;
             }
         }
 
-        setStatus(
-            "✅ Database siap",
-            "green"
-        );
+        document.getElementById(
+            'status'
+        ).innerText = "✅ Data siap";
 
-    }catch(err){
+        document.getElementById(
+            'status'
+        ).style.color = "green";
 
-        console.error(err);
+    }catch(error){
 
-        setStatus(
-            "❌ Gagal load database",
-            "red"
-        );
+        console.error(error);
 
-        alert(
-            "Gagal mengambil data database"
-        );
+        document.getElementById(
+            'status'
+        ).innerText =
+            "❌ Gagal memuat data";
+
+        document.getElementById(
+            'status'
+        ).style.color = "red";
     }
 }
 
@@ -282,22 +258,21 @@ async function submitBatch(aksi){
 
     itemCodes.forEach(kode => {
 
-        const input =
+        const val =
             document.getElementById(
                 `input-${kode}`
-            );
-
-        const jumlah =
-            parseInt(input.value);
+            ).value;
 
         if(
-            !isNaN(jumlah) &&
-            jumlah > 0
+            val &&
+            parseInt(val) > 0
         ){
 
             itemsToProcess.push({
+
                 kode:kode,
-                jumlah:jumlah
+
+                jumlah:parseInt(val)
             });
         }
     });
@@ -309,24 +284,26 @@ async function submitBatch(aksi){
     if(itemsToProcess.length === 0){
 
         alert(
-            "Isi minimal 1 barang"
+            "Pilih minimal satu barang"
         );
 
         return;
     }
 
     // =========================
-    // UI LOADING
+    // STATUS
     // =========================
 
-    document.body.classList.add(
-        "loading"
-    );
+    const btnStatus =
+        document.getElementById(
+            'status'
+        );
 
-    setStatus(
-        `⏳ Memproses ${aksi}...`,
-        "orange"
-    );
+    btnStatus.innerText =
+        `⏳ Memproses ${itemsToProcess.length} item...`;
+
+    btnStatus.style.color =
+        "orange";
 
     try{
 
@@ -335,15 +312,13 @@ async function submitBatch(aksi){
         // =========================
 
         const response =
-            await fetch(SCRIPT_URL,{
+            await fetch(SCRIPT_URL, {
 
-            method:"POST",
-
-            redirect:"follow",
+            method:'POST',
 
             headers:{
                 "Content-Type":
-                "text/plain;charset=utf-8"
+                "application/json"
             },
 
             body:JSON.stringify({
@@ -354,29 +329,26 @@ async function submitBatch(aksi){
             })
         });
 
-        const text =
-            await response.text();
-
-        console.log(text);
+        // =========================
+        // AMBIL TEXT
+        // =========================
 
         const result =
-            JSON.parse(text);
+            await response.text();
+
+        console.log(result);
 
         // =========================
         // SUCCESS
         // =========================
 
-        if(result.status){
+        if(
+            result.includes(
+                "Proses Selesai"
+            )
+        ){
 
-            let pesan =
-                `✅ ${aksi.toUpperCase()} BERHASIL\n\n`;
-
-            result.logs.forEach(log => {
-
-                pesan += log + "\n";
-            });
-
-            alert(pesan);
+            alert(result);
 
             // reset input
             itemCodes.forEach(kode => {
@@ -388,53 +360,44 @@ async function submitBatch(aksi){
 
                 if(el){
 
-                    el.value = "";
+                    el.value = '';
                 }
             });
 
-            setStatus(
-                "✅ Transaksi berhasil",
-                "green"
-            );
+            btnStatus.innerText =
+                "✅ Transaksi berhasil";
+
+            btnStatus.style.color =
+                "green";
 
             // reload data
-            await loadData();
+            loadData();
 
         }else{
 
-            alert(
-                "❌ " +
-                (
-                    result.message ||
-                    result.error
-                )
-            );
+            alert(result);
 
-            setStatus(
-                "❌ Transaksi gagal",
-                "red"
-            );
+            btnStatus.innerText =
+                "❌ Transaksi gagal";
+
+            btnStatus.style.color =
+                "red";
         }
 
-    }catch(err){
+    }catch(error){
 
-        console.error(err);
+        console.error(error);
 
         alert(
             "❌ Tidak bisa terhubung ke server\n\n" +
-            err.message
+            error.message
         );
 
-        setStatus(
-            "❌ Koneksi gagal",
-            "red"
-        );
+        btnStatus.innerText =
+            "❌ Koneksi gagal";
 
-    }finally{
-
-        document.body.classList.remove(
-            "loading"
-        );
+        btnStatus.style.color =
+            "red";
     }
 }
 
