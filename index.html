@@ -1,65 +1,37 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Sistem Inventaris</title>
+<title>Inventaris Database</title>
 
 <style>
 
 body{
-    font-family:sans-serif;
+    margin:0;
     padding:20px;
-    background:#2c3e50;
-    background-image:url('rex.png');
-    background-size:cover;
-    background-position:center;
-    background-attachment:fixed;
+    font-family:Arial, sans-serif;
+    background:#1e272e;
+    color:white;
 }
 
 .container{
-    max-width:1000px;
+    max-width:1200px;
     margin:auto;
-    background:rgba(255,255,255,0.95);
-    padding:20px;
-    border-radius:10px;
 }
 
-h2{
+h1{
     text-align:center;
+    margin-bottom:25px;
 }
 
-.sticky-tools{
-    position:sticky;
-    top:0;
-
-    display:flex;
-    gap:10px;
-    justify-content:center;
-    align-items:center;
-
-    background:#eee;
+.table-box{
+    overflow-x:auto;
+    background:#2f3640;
+    border-radius:12px;
     padding:15px;
-    margin-bottom:20px;
-    border-radius:10px;
-}
-
-button{
-    border:none;
-    padding:12px 24px;
-    border-radius:6px;
-    color:white;
-    font-weight:bold;
-    cursor:pointer;
-}
-
-.btn-depo{
-    background:#27ae60;
-}
-
-.btn-with{
-    background:#c0392b;
 }
 
 table{
@@ -67,81 +39,121 @@ table{
     border-collapse:collapse;
 }
 
-th,td{
-    border:1px solid #ddd;
-    padding:10px;
+th{
+    background:#40739e;
+    padding:12px;
 }
 
-th{
-    background:#333;
+td{
+    background:#353b48;
+    padding:10px;
+    text-align:center;
+    border-bottom:1px solid #444;
+}
+
+input[type="number"]{
+    width:80px;
+    padding:8px;
+    border:none;
+    border-radius:6px;
+    text-align:center;
+    font-weight:bold;
+}
+
+.action-box{
+    display:flex;
+    gap:8px;
+    justify-content:center;
+}
+
+button{
+    border:none;
+    padding:8px 14px;
+    border-radius:8px;
+    cursor:pointer;
+    font-weight:bold;
     color:white;
 }
 
-input{
-    width:80px;
-    padding:6px;
+.deposit{
+    background:#27ae60;
 }
 
-#status{
+.withdraw{
+    background:#c0392b;
+}
+
+.deposit:hover{
+    background:#2ecc71;
+}
+
+.withdraw:hover{
+    background:#e74c3c;
+}
+
+.status{
+    margin-top:20px;
+    text-align:center;
+    font-size:18px;
+    font-weight:bold;
+}
+
+.category{
     font-weight:bold;
 }
 
 </style>
-</head>
 
+</head>
 <body>
 
 <div class="container">
 
-<h2>DATABASE INVENTARIS</h2>
+<h1>DATABASE INVENTARIS</h1>
 
-<div class="sticky-tools">
-
-<button
-class="btn-depo"
-onclick="submitBatch('deposit')">
-DEPOSIT SEMUA
-</button>
-
-<button
-class="btn-with"
-onclick="submitBatch('withdraw')">
-WITHDRAW SEMUA
-</button>
-
-<div id="status">
-Memuat data...
-</div>
-
-</div>
+<div class="table-box">
 
 <table>
 
 <thead>
 <tr>
-<th>Nama Barang</th>
-<th>Kode</th>
-<th>Stok</th>
-<th>Input</th>
+    <th>Kode</th>
+    <th>Kategori</th>
+    <th>Nama Barang</th>
+    <th>Stok</th>
+    <th>Jumlah</th>
+    <th>Aksi</th>
 </tr>
 </thead>
 
-<tbody id="tableBody"></tbody>
+<tbody id="inventory-body">
+
+<!-- DATA MASUK DARI GOOGLE SHEETS -->
+
+</tbody>
 
 </table>
 
 </div>
 
+<div class="status" id="status">
+    Memuat database...
+</div>
+
+</div>
+
 <script>
 
+// ======================================
+// GANTI DENGAN URL APPS SCRIPT LU
+// ======================================
+
 const SCRIPT_URL =
-"https://script.google.com/macros/s/AKfycbzE7MI5KLTP0gHNVVYmhmjKBPJNdCkQs1F96P1tcsEiTp1_Rz_njm0rQ1NHE_EKH1nMFw/exec";
+"https://script.google.com/macros/s/AKfycbxFyJhW7WPxdpl9UMcGGEMMvL5qaDwWxFcb6EhzAfgOs4qt7v_EEo63zrv6BrOXiVGKBQ/exec";
 
-let itemCodes = [];
-
-// =====================================
+// ======================================
 // LOAD DATA
-// =====================================
+// ======================================
 
 async function loadData(){
 
@@ -153,50 +165,85 @@ async function loadData(){
         const data =
             await response.json();
 
-        const tableBody =
+        const tbody =
             document.getElementById(
-                "tableBody"
+                "inventory-body"
             );
 
-        tableBody.innerHTML = "";
+        tbody.innerHTML = "";
 
-        itemCodes = [];
-
+        // skip header
         for(let i = 1; i < data.length; i++){
 
-            const kode = data[i][1];
+            const row = data[i];
 
-            if(kode){
+            const kode = row[1];
+            const kategori = row[2];
+            const nama = row[3];
+            const stok = row[4];
 
-                itemCodes.push(kode);
+            tbody.innerHTML += `
 
-                tableBody.innerHTML += `
-                <tr>
+            <tr>
 
-                    <td>${data[i][3]}</td>
+                <td>${kode}</td>
 
-                    <td>${kode}</td>
+                <td class="category">
+                    ${kategori}
+                </td>
 
-                    <td>
-                        <b>${data[i][4]}</b>
-                    </td>
+                <td>${nama}</td>
 
-                    <td>
-                        <input
+                <td id="stok-${kode}">
+                    ${stok}
+                </td>
+
+                <td>
+
+                    <input
                         type="number"
-                        id="input-${kode}"
-                        placeholder="0"
-                        min="0">
-                    </td>
+                        min="1"
+                        value="1"
+                        id="jumlah-${kode}"
+                    >
 
-                </tr>
-                `;
-            }
+                </td>
+
+                <td>
+
+                    <div class="action-box">
+
+                        <button
+                            class="deposit"
+                            onclick="transaksi(
+                                '${kode}',
+                                'deposit'
+                            )"
+                        >
+                            Deposit
+                        </button>
+
+                        <button
+                            class="withdraw"
+                            onclick="transaksi(
+                                '${kode}',
+                                'withdraw'
+                            )"
+                        >
+                            Withdraw
+                        </button>
+
+                    </div>
+
+                </td>
+
+            </tr>
+            `;
         }
 
         setStatus(
-            "✅ Database siap",
-            "green"
+            "✅ Database berhasil dimuat",
+            "#2ecc71"
         );
 
     }catch(err){
@@ -204,78 +251,45 @@ async function loadData(){
         console.error(err);
 
         setStatus(
-            "❌ Gagal load data",
-            "red"
+            "❌ Gagal mengambil data",
+            "#e74c3c"
         );
     }
 }
 
-// =====================================
-// STATUS
-// =====================================
+// ======================================
+// TRANSAKSI
+// ======================================
 
-function setStatus(text,color){
+async function transaksi(kode, aksi){
 
-    const status =
-        document.getElementById(
-            "status"
+    const jumlah =
+        parseInt(
+            document.getElementById(
+                `jumlah-${kode}`
+            ).value
         );
 
-    status.innerText = text;
-
-    status.style.color = color;
-}
-
-// =====================================
-// SUBMIT
-// =====================================
-
-async function submitBatch(aksi){
-
-    const itemsToProcess = [];
-
-    itemCodes.forEach(kode => {
-
-        const input =
-            document.getElementById(
-                `input-${kode}`
-            );
-
-        const jumlah =
-            parseInt(input.value);
-
-        if(
-            !isNaN(jumlah) &&
-            jumlah > 0
-        ){
-
-            itemsToProcess.push({
-
-                kode:kode,
-
-                jumlah:jumlah
-            });
-        }
-    });
-
-    if(itemsToProcess.length === 0){
+    if(
+        isNaN(jumlah) ||
+        jumlah <= 0
+    ){
 
         alert(
-            "Isi minimal 1 barang"
+            "Jumlah tidak valid"
         );
 
         return;
     }
 
     setStatus(
-        "⏳ Memproses...",
-        "orange"
+        "⏳ Memproses transaksi...",
+        "#f1c40f"
     );
 
     try{
 
-        const response =
-            await fetch(SCRIPT_URL,{
+        await fetch(SCRIPT_URL,{
 
             method:"POST",
 
@@ -288,72 +302,49 @@ async function submitBatch(aksi){
 
                 aksi:aksi,
 
-                items:itemsToProcess
+                kode:kode,
+
+                jumlah:jumlah
             })
         });
 
-        // PENTING
-        const result =
-            await response.text();
+        setStatus(
+            `✅ ${aksi.toUpperCase()} berhasil`,
+            "#2ecc71"
+        );
 
-        console.log(result);
-
-        alert(result);
-
-        if(
-            result.includes(
-                "Proses Selesai"
-            )
-        ){
-
-            setStatus(
-                "✅ Berhasil",
-                "green"
-            );
-
-            // reset input
-            itemCodes.forEach(kode => {
-
-                const el =
-                    document.getElementById(
-                        `input-${kode}`
-                    );
-
-                if(el){
-
-                    el.value = "";
-                }
-            });
-
-            // reload data
-            loadData();
-
-        }else{
-
-            setStatus(
-                "❌ Gagal",
-                "red"
-            );
-        }
+        // reload data
+        loadData();
 
     }catch(err){
 
         console.error(err);
 
-        alert(
-            "❌ Tidak bisa terhubung ke server"
-        );
-
         setStatus(
-            "❌ Koneksi gagal",
-            "red"
+            "❌ Gagal mengirim transaksi",
+            "#e74c3c"
         );
     }
 }
 
-// =====================================
+// ======================================
+// STATUS
+// ======================================
+
+function setStatus(text,color){
+
+    const status =
+        document.getElementById(
+            "status"
+        );
+
+    status.innerText = text;
+    status.style.color = color;
+}
+
+// ======================================
 // START
-// =====================================
+// ======================================
 
 loadData();
 
