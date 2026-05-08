@@ -12,7 +12,7 @@
 body{
     margin:0;
     padding:20px;
-    font-family:Arial, sans-serif;
+    font-family:Arial,sans-serif;
     background:#1e272e;
     color:white;
 }
@@ -25,6 +25,15 @@ body{
 h1{
     text-align:center;
     margin-bottom:25px;
+}
+
+.topbar{
+    display:flex;
+    gap:10px;
+    justify-content:center;
+    align-items:center;
+    margin-bottom:20px;
+    flex-wrap:wrap;
 }
 
 .table-box{
@@ -58,21 +67,17 @@ input[type="number"]{
     border-radius:6px;
     text-align:center;
     font-weight:bold;
-}
-
-.action-box{
-    display:flex;
-    gap:8px;
-    justify-content:center;
+    background:white;
 }
 
 button{
     border:none;
-    padding:8px 14px;
+    padding:12px 18px;
     border-radius:8px;
     cursor:pointer;
     font-weight:bold;
     color:white;
+    transition:0.2s;
 }
 
 .deposit{
@@ -111,6 +116,24 @@ button{
 
 <h1>DATABASE INVENTARIS</h1>
 
+<div class="topbar">
+
+    <button
+        class="deposit"
+        onclick="submitBatch('deposit')"
+    >
+        DEPOSIT SEMUA
+    </button>
+
+    <button
+        class="withdraw"
+        onclick="submitBatch('withdraw')"
+    >
+        WITHDRAW SEMUA
+    </button>
+
+</div>
+
 <div class="table-box">
 
 <table>
@@ -122,13 +145,10 @@ button{
     <th>Nama Barang</th>
     <th>Stok</th>
     <th>Jumlah</th>
-    <th>Aksi</th>
 </tr>
 </thead>
 
 <tbody id="inventory-body">
-
-<!-- DATA MASUK DARI GOOGLE SHEETS -->
 
 </tbody>
 
@@ -145,11 +165,13 @@ button{
 <script>
 
 // ======================================
-// GANTI DENGAN URL APPS SCRIPT LU
+// URL APPS SCRIPT
 // ======================================
 
 const SCRIPT_URL =
 "https://script.google.com/macros/s/AKfycbxFyJhW7WPxdpl9UMcGGEMMvL5qaDwWxFcb6EhzAfgOs4qt7v_EEo63zrv6BrOXiVGKBQ/exec";
+
+let itemCodes = [];
 
 // ======================================
 // LOAD DATA
@@ -172,6 +194,8 @@ async function loadData(){
 
         tbody.innerHTML = "";
 
+        itemCodes = [];
+
         // skip header
         for(let i = 1; i < data.length; i++){
 
@@ -181,6 +205,8 @@ async function loadData(){
             const kategori = row[2];
             const nama = row[3];
             const stok = row[4];
+
+            itemCodes.push(kode);
 
             tbody.innerHTML += `
 
@@ -194,46 +220,18 @@ async function loadData(){
 
                 <td>${nama}</td>
 
-                <td id="stok-${kode}">
-                    ${stok}
+                <td>
+                    <b>${stok}</b>
                 </td>
 
                 <td>
 
                     <input
                         type="number"
-                        min="1"
-                        value="1"
+                        min="0"
+                        value="0"
                         id="jumlah-${kode}"
                     >
-
-                </td>
-
-                <td>
-
-                    <div class="action-box">
-
-                        <button
-                            class="deposit"
-                            onclick="transaksi(
-                                '${kode}',
-                                'deposit'
-                            )"
-                        >
-                            Deposit
-                        </button>
-
-                        <button
-                            class="withdraw"
-                            onclick="transaksi(
-                                '${kode}',
-                                'withdraw'
-                            )"
-                        >
-                            Withdraw
-                        </button>
-
-                    </div>
 
                 </td>
 
@@ -258,25 +256,40 @@ async function loadData(){
 }
 
 // ======================================
-// TRANSAKSI
+// TRANSAKSI MASSAL
 // ======================================
 
-async function transaksi(kode, aksi){
+async function submitBatch(aksi){
 
-    const jumlah =
-        parseInt(
-            document.getElementById(
-                `jumlah-${kode}`
-            ).value
-        );
+    const items = [];
 
-    if(
-        isNaN(jumlah) ||
-        jumlah <= 0
-    ){
+    itemCodes.forEach(kode => {
+
+        const jumlah =
+            parseInt(
+                document.getElementById(
+                    `jumlah-${kode}`
+                ).value
+            );
+
+        if(
+            !isNaN(jumlah) &&
+            jumlah > 0
+        ){
+
+            items.push({
+
+                kode:kode,
+
+                jumlah:jumlah
+            });
+        }
+    });
+
+    if(items.length === 0){
 
         alert(
-            "Jumlah tidak valid"
+            "Isi minimal 1 item"
         );
 
         return;
@@ -289,29 +302,45 @@ async function transaksi(kode, aksi){
 
     try{
 
-        await fetch(SCRIPT_URL,{
+        // kirim satu-satu
+        for(const item of items){
 
-            method:"POST",
+            await fetch(SCRIPT_URL,{
 
-            headers:{
-                "Content-Type":
-                "text/plain;charset=utf-8"
-            },
+                method:"POST",
 
-            body:JSON.stringify({
+                headers:{
+                    "Content-Type":
+                    "text/plain;charset=utf-8"
+                },
 
-                aksi:aksi,
+                body:JSON.stringify({
 
-                kode:kode,
+                    aksi:aksi,
 
-                jumlah:jumlah
-            })
-        });
+                    kode:item.kode,
+
+                    jumlah:item.jumlah
+                })
+            });
+        }
 
         setStatus(
             `✅ ${aksi.toUpperCase()} berhasil`,
             "#2ecc71"
         );
+
+        alert(
+            `${aksi.toUpperCase()} berhasil`
+        );
+
+        // reset input
+        itemCodes.forEach(kode => {
+
+            document.getElementById(
+                `jumlah-${kode}`
+            ).value = 0;
+        });
 
         // reload data
         loadData();
@@ -321,8 +350,12 @@ async function transaksi(kode, aksi){
         console.error(err);
 
         setStatus(
-            "❌ Gagal mengirim transaksi",
+            "❌ Gagal transaksi",
             "#e74c3c"
+        );
+
+        alert(
+            "Gagal mengirim transaksi"
         );
     }
 }
