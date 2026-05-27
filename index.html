@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Inventaris Database</title>
+
+<style>
+
+body{
+    margin:0;
+    padding:20px;
+    font-family:Arial,sans-serif;
+    background:#1e272e;
+    color:white;
+}
+
+.container{
+    max-width:1200px;
+    margin:auto;
+}
+
+h1{
+    text-align:center;
+    margin-bottom:25px;
+}
+
+.topbar{
+    display:flex;
+    gap:10px;
+    justify-content:center;
+    align-items:center;
+    margin-bottom:20px;
+    flex-wrap:wrap;
+}
+
+.table-box{
+    overflow-x:auto;
+    background:#2f3640;
+    border-radius:12px;
+    padding:15px;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+}
+
+th{
+    background:#40739e;
+    padding:12px;
+}
+
+td{
+    background:#353b48;
+    padding:10px;
+    text-align:center;
+    border-bottom:1px solid #444;
+}
+
+input[type="number"]{
+    width:80px;
+    padding:8px;
+    border:none;
+    border-radius:6px;
+    text-align:center;
+    font-weight:bold;
+    background:white;
+    color:black;
+}
+
+button{
+    border:none;
+    padding:12px 18px;
+    border-radius:8px;
+    cursor:pointer;
+    font-weight:bold;
+    color:white;
+    transition:0.2s;
+}
+
+.deposit{
+    background:#27ae60;
+}
+
+.withdraw{
+    background:#c0392b;
+}
+
+.deposit:hover{
+    background:#2ecc71;
+}
+
+.withdraw:hover{
+    background:#e74c3c;
+}
+
+button:disabled{
+    opacity:0.5;
+    cursor:not-allowed;
+}
+
+.status{
+    margin-top:20px;
+    text-align:center;
+    font-size:18px;
+    font-weight:bold;
+}
+
+.category{
+    font-weight:bold;
+}
+
+</style>
+
+</head>
+<body>
+
+<div class="container">
+
+<h1>DATABASE INVENTARIS</h1>
+
+<div class="topbar">
+
+    <button
+        class="deposit"
+        id="btn-deposit"
+        onclick="submitBatch('deposit')"
+    >
+        DEPOSIT SEMUA
+    </button>
+
+    <button
+        class="withdraw"
+        id="btn-withdraw"
+        onclick="submitBatch('withdraw')"
+    >
+        WITHDRAW SEMUA
+    </button>
+
+</div>
+
+<div class="table-box">
+
+<table>
+
+<thead>
+<tr>
+    <th>Kode</th>
+    <th>Kategori</th>
+    <th>Nama Barang</th>
+    <th>Stok</th>
+    <th>Jumlah</th>
+</tr>
+</thead>
+
+<tbody id="inventory-body">
+
+</tbody>
+
+</table>
+
+</div>
+
+<div class="status" id="status">
+    Memuat database...
+</div>
+
+</div>
+
+<script>
+
+// ======================================
+// URL
+// ======================================
+
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzq2rYnjKqzXqaIYLS5MrR9CO3dLCmP6m0nweUxnsFekJY1OEFjzGhKVzZfmmE3eyW-Gw/exec";
+const BOT_URL    = "https://inventory-production-0c2c.up.railway.app/transaksi";
+
+let itemCodes = [];
+
+// ======================================
+// LOAD DATA
+// ======================================
+
+async function loadData(){
+
+    try{
+
+        const response = await fetch(SCRIPT_URL);
+        const data     = await response.json();
+        const tbody    = document.getElementById("inventory-body");
+
+        tbody.innerHTML = "";
+        itemCodes       = [];
+
+        // skip header
+        for(let i = 1; i < data.length; i++){
+
+            const row      = data[i];
+            const kode     = row[1];
+            const kategori = row[2];
+            const nama     = row[3];
+            const stok     = row[4];
+
+            itemCodes.push(kode);
+
+            tbody.innerHTML += `
+            <tr>
+                <td>${kode}</td>
+                <td class="category">${kategori}</td>
+                <td>${nama}</td>
+                <td><b>${stok}</b></td>
+                <td>
+                    <input
+                        type="number"
+                        min="0"
+                        value="0"
+                        id="jumlah-${kode}"
+                    >
+                </td>
+            </tr>
+            `;
+        }
+
+        setStatus("✅ Database berhasil dimuat", "#2ecc71");
+
+    }catch(err){
+
+        console.error(err);
+        setStatus("❌ Gagal mengambil data", "#e74c3c");
+    }
+}
+
+// ======================================
+// TRANSAKSI MASSAL (BATCH)
+// ======================================
+
+async function submitBatch(aksi){
+
+    const items = [];
+
+    itemCodes.forEach(kode => {
+
+        const jumlah = parseInt(document.getElementById(`jumlah-${kode}`).value);
+
+        if(!isNaN(jumlah) && jumlah > 0){
+            items.push({
+                aksi:   aksi,
+                kode:   kode,
+                jumlah: jumlah
+            });
+        }
+    });
+
+    if(items.length === 0){
+        alert("Isi minimal 1 item dulu!");
+        return;
+    }
+
+    // Disable tombol saat proses
+    document.getElementById("btn-deposit").disabled  = true;
+    document.getElementById("btn-withdraw").disabled = true;
+
+    setStatus("⏳ Memproses transaksi...", "#f1c40f");
+
+    try{
+
+        const response = await fetch(BOT_URL, {
+            method:  "POST",
+            headers: { "Content-Type": "application/json" },
+            body:    JSON.stringify(items)
+        });
+
+        const result = await response.json();
+
+        if(result.errors && result.errors.length > 0){
+            setStatus("⚠️ " + result.errors.join(", "), "#e74c3c");
+            alert("Ada error:\n" + result.errors.join("\n"));
+        } else {
+            setStatus(`✅ ${aksi.toUpperCase()} berhasil (${result.sukses} item)`, "#2ecc71");
+            alert(`${aksi.toUpperCase()} berhasil!`);
+        }
+
+        // Reset input
+        itemCodes.forEach(kode => {
+            document.getElementById(`jumlah-${kode}`).value = 0;
+        });
+
+        // Reload data
+        loadData();
+
+    }catch(err){
+
+        console.error(err);
+        setStatus("❌ Gagal transaksi", "#e74c3c");
+        alert("Gagal mengirim transaksi. Coba lagi.");
+
+    } finally {
+
+        // Enable tombol kembali
+        document.getElementById("btn-deposit").disabled  = false;
+        document.getElementById("btn-withdraw").disabled = false;
+    }
+}
+
+// ======================================
+// STATUS
+// ======================================
+
+function setStatus(text, color){
+
+    const status    = document.getElementById("status");
+    status.innerText = text;
+    status.style.color = color;
+}
+
+// ======================================
+// START
+// ======================================
+
+loadData();
+
+</script>
+
+</body>
+</html>
